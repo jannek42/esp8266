@@ -1120,8 +1120,7 @@ void httpd_root(void) {
 
 void httpd_mode(void) {
   debug_log_ln("%s: httpd - request: mode", TimeClient->getDateTimeISO());
-  Quiet_mode = !Quiet_mode;
-  Refresh = true;
+  toggle_mode();
   Httpd.sendHeader("Location", String("/"), true);
   Httpd.send(302, MIME_TEXT, "");
 }
@@ -2369,6 +2368,25 @@ void cycle_night_mode(int dir) {
   set_night_mode(nm);
 }
 
+void toggle_mode(void) {
+  if (NMEA_mode && NMEA_mode < 5) Quiet_mode = true;
+  else if (NMEA_mode == 5)        Quiet_mode = false;
+  else                            Quiet_mode = !Quiet_mode;
+
+  if ((Night_mode == NIGHT_MODE_ON) || (Night_mode && Brightness <= 1)) {
+    // disable night mode if sub-second mode requested while in night mode.
+    Prev_nm = Night_mode;
+    if (!Quiet_mode) {
+      set_night_mode(NIGHT_MODE_OFF);
+    }
+  } else if (Prev_nm != NIGHT_MODE_OFF) {
+    set_night_mode(Prev_nm);
+    Prev_nm = NIGHT_MODE_OFF;
+  }
+  if (Quiet_mode) Show_year = 3; // show current year for 1-2s when going quiet
+  Refresh = true;
+}
+
 void display_swap(void) {
   display_swap(!Swap_displays);
 }
@@ -2595,11 +2613,9 @@ void loop(void) {
   static int  prev_min   = -2;    // --''--, -2 initially, 
   static int  prev_sec   = -2;    // --''--, -1 to force refresh later
   static int  prev_msec  = -2;    // --''--
-  static int  show_year  =  0;    // show current year for n seconds
 
   #ifdef HAVE_SWITCH
   static unsigned long prev_sw_ts = rt; // Previous switch state change millis()
-  static uint8_t prev_nm =  0;    // prev night mode (if !quiet while in nm)
   static int  prev_sw    =  0;    // switch state comparison value
   static int  sw_hot     =  0;    // hw switch has been closed for >n s
   #endif
@@ -2686,9 +2702,9 @@ void loop(void) {
           display_point(Dp[1], DpPc[Dp[1]]); // Just sets the flag
         }
       }
-      if (show_year) {
+      if (Show_year) {
         prev_min = -1;
-        show_year--;
+        Show_year--;
       }
     }
     check_wifi_status(); // Check WiFi status every second
@@ -2714,7 +2730,7 @@ void loop(void) {
     if (Quiet_mode && (NMEA_mode == 0 || NMEA_mode == 4)) {
       if (Have_dp[2]) { // update display 2 every minute, even if no changes, if WiFi is OK
         char dbuf[8] = "";
-        if (show_year) {
+        if (Show_year) {
           snprintf(dbuf, sizeof(dbuf), "%04d", tm.Year);
           display_point(Dp[2], POINT_OFF);
         } else {
@@ -2802,20 +2818,7 @@ void loop(void) {
         if (Debug->is_enabled())
           debug_log_ln("%s: Display mode: %s", TimeClient ? TimeClient->getDateTimeISO() : "Init", !Quiet_mode ? "Normal" : "Seconds");
       }
-      if (NMEA_mode && NMEA_mode < 5) Quiet_mode = true;
-      else if (NMEA_mode == 5)        Quiet_mode = false;
-      else                            Quiet_mode = !Quiet_mode;
-      if ((Night_mode == NIGHT_MODE_ON) || (Night_mode && Brightness <= 1)) {
-        // disable night mode if sub-second mode requested while in night mode.
-        prev_nm = Night_mode;
-        if (!Quiet_mode) {
-          set_night_mode(0);
-        }
-      } else if (prev_nm) {
-        set_night_mode(prev_nm);
-        prev_nm = 0;
-      }
-      if (Quiet_mode) show_year = 3; // show current year for 1-2s when going quiet
+      toggle_mode();
     }
     prev_sw_ts = rt; // Set as loop start millis()
     prev_sw    = sw_state;
