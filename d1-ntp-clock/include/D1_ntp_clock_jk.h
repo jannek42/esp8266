@@ -3,7 +3,7 @@
 //
 //  Other definitions, main program globals & prototypes
 //
-#define MASTER_VERSION "2020-09-09.1"
+#define MASTER_VERSION "2021-01-08.1"
 #define DEBUG_PARSE_CONFIG_FILE false
 #define NO_AUTH_IF_DEFAULT_PASS true
 
@@ -145,6 +145,7 @@ int    *Mtx_bright    = Dp_bright[0];
 int    *Dp1_bright    = Dp_bright[1];
 int    *Dp2_bright    = Dp_bright[2];
 uint8_t Night_mode    = NIGHT_MODE_OFF; // no-blink minute change and alternate, fixed brightness levels
+uint8_t Prev_nm       = NIGHT_MODE_OFF; // prev night mode (if !quiet while in nm)
 uint8_t Night_extreme = 0; // Lose the minutes.
 uint32_t NiEx_h       = 0; // Which hours to activate extreme night mode on
 uint8_t NiEx_from     = 22; // convenience globals for the former...
@@ -160,6 +161,7 @@ float   Luminance     = -1.0F; // Current ambient light level
 int     Brightness    = DEFAULT_BRIGHTNESS; // Current brightness step
 int     Manual_bright = -1; // Override if > -1. 0 == OFF.
 bool    Quiet_mode    = DEFAULT_DISPLAY_MODE; // true => date, false => ms
+uint8_t Show_year     = 0; // show current year for n seconds
 bool    Refresh       = false; // Force refresh of all displays
 int         Mtx_wd_lc     = MTX_WKD_LANG; // Default, can be configured later
 const int   Mtx_wd_idx[]  = { MTX_WKD_OFFSET_EN, MTX_WKD_OFFSET_FI }; // lookup table
@@ -305,6 +307,7 @@ void set_night_swap(void);
 void set_night_swap(uint8_t mode);
 void cycle_night_mode(void);
 void cycle_night_mode(int dir);
+void toggle_mode(void);
 #ifdef HAVE_NMEA
 void parse_nmea_rmc(char *str);
 void format_nmea_cog_sog(void);
